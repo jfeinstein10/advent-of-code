@@ -29,9 +29,9 @@ let part2 (lines:int list):float =
         let numPaths = 
           [1..3] 
           |> List.map (fun stepToNextValue -> 
-            match (List.tryFindIndex ((=) (value + stepToNextValue)) lines) with 
-            | Some nextIdx -> getPaths lines (value + stepToNextValue)
-            | None -> 0.0)
+            if List.contains (value + stepToNextValue) lines 
+            then getPaths lines (value + stepToNextValue)
+            else 0.0)
           |> List.sum
         memoize <- memoize.Add(value, numPaths)
         numPaths
