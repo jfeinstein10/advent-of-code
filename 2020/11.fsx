@@ -8,32 +8,23 @@ let map =
   |> Seq.toArray
 let seated = '#'
 let empty = 'L'
-let rows = map.Length
-let cols = map.[0].Length
 
-let cross xs ys = xs |> List.collect (fun x -> ys |> List.map (fun y -> x, y))
-let inBounds r c = r >= 0 && r < rows && c >= 0 && c < cols
+let cross xs ys = Seq.allPairs xs ys |> Seq.toList
+let inBounds r c (map:char[][]) = r >= 0 && r < map.Length && c >= 0 && c < map.[0].Length
 
-let stepMap (changeFn:char[][] -> int -> int -> char) (map:char[][]): (char[][] * bool) =
-  let mutable changes = false
-  let newMap = 
-    map
-    |> Array.mapi (fun rowIdx row -> 
-      row
-      |> Array.mapi (fun colIdx col -> 
-        let newCell = changeFn map rowIdx colIdx
-        changes <- newCell <> map.[rowIdx].[colIdx] || changes
-        newCell))
-  (newMap, changes)
+let stepMap (changeFn:char[][] -> int -> int -> char) (map:char[][]): char[][] =
+  map
+  |> Array.mapi (fun rowIdx row -> 
+    row
+    |> Array.mapi (fun colIdx col -> changeFn map rowIdx colIdx))
 
 let simulateUntilNoChanges (changeFn:char[][] -> int -> int -> char) (map:char[][]): char[][] =
-  let mutable map = map
-  let mutable changes = true
-  while changes do
-    let (newMap, anyChanges) = stepMap changeFn map
-    map <- newMap
-    changes <- anyChanges
   map
+  |> Seq.unfold (fun lastMap -> 
+    let nextMap = stepMap changeFn lastMap
+    let equal = Array.compareWith (Array.compareWith (fun x y -> int x - int y)) lastMap nextMap
+    if equal = 0 then None else Some(nextMap, nextMap))
+  |> Seq.last
 
 let countCells (map:char[][]) (value:char) =
   map 
@@ -48,7 +39,7 @@ let part1 (map:char[][]): int =
     cross [-1..1] [-1..1]
     |> List.filter (fun (x, y) -> x <> 0 || y <> 0)
     |> List.map (fun (rowOffset, colOffset) -> (row + rowOffset, col + colOffset))
-    |> List.filter (fun (r, c) -> inBounds r c && map.[r].[c] = seated)
+    |> List.filter (fun (r, c) -> inBounds r c map && map.[r].[c] = seated)
     |> List.length
   let stepCell (map:char[][]) (row:int) (col:int): char =
     match map.[row].[col] with
@@ -65,7 +56,7 @@ let part2 (map:char[][]): int =
     |> List.filter (fun (x, y) -> x <> 0 || y <> 0)
     |> List.map (fun (rowOffset, colOffset) ->
       Seq.initInfinite (fun i -> (row + (i+1) * rowOffset, col + (i+1) * colOffset))
-      |> Seq.takeWhile (fun (r, c) -> inBounds r c)
+      |> Seq.takeWhile (fun (r, c) -> inBounds r c map)
       |> Seq.map (fun (r, c) -> map.[r].[c])
       |> Seq.filter ((<>) '.')
       |> Seq.map (fun v -> if v = seated then 1 else 0)
