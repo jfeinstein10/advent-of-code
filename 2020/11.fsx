@@ -1,16 +1,16 @@
 #! /usr/bin/env fsharpi
 
-open System.Collections.Generic
-
 let map =
   System.IO.File.ReadLines("11.input")
   |> Seq.map (fun line -> line.ToCharArray())
   |> Seq.toArray
 let seated = '#'
 let empty = 'L'
-
-let cross xs ys = Seq.allPairs xs ys |> Seq.toList
-let inBounds r c (map:char[][]) = r >= 0 && r < map.Length && c >= 0 && c < map.[0].Length
+let neighborDirections = 
+  Seq.allPairs [-1..1] [-1..1] 
+  |> Seq.filter (fun (x, y) -> x <> 0 || y <> 0)
+let inBounds (r:int) (c:int) (map:char[][]) = 
+  r >= 0 && r < map.Length && c >= 0 && c < map.[0].Length
 
 let stepMap (changeFn:char[][] -> int -> int -> char) (map:char[][]): char[][] =
   map
@@ -36,11 +36,10 @@ let countCells (map:char[][]) (value:char) =
 
 let part1 (map:char[][]): int =
   let neighborCount (map:char[][]) (row:int) (col:int): int =
-    cross [-1..1] [-1..1]
-    |> List.filter (fun (x, y) -> x <> 0 || y <> 0)
-    |> List.map (fun (rowOffset, colOffset) -> (row + rowOffset, col + colOffset))
-    |> List.filter (fun (r, c) -> inBounds r c map && map.[r].[c] = seated)
-    |> List.length
+    neighborDirections
+    |> Seq.map (fun (rowOffset, colOffset) -> (row + rowOffset, col + colOffset))
+    |> Seq.filter (fun (r, c) -> inBounds r c map && map.[r].[c] = seated)
+    |> Seq.length
   let stepCell (map:char[][]) (row:int) (col:int): char =
     match map.[row].[col] with
     | '#' -> if neighborCount map row col >= 4 then empty else seated
@@ -48,21 +47,20 @@ let part1 (map:char[][]): int =
     | _ -> map.[row].[col]
   countCells (simulateUntilNoChanges stepCell map) seated
 
-printfn "Part 1: %i" (part1 (Array.copy map))
+printfn "Part 1: %i" (part1 map)
 
 let part2 (map:char[][]): int =
   let neighborCount (map:char[][]) (row:int) (col:int): int =
-    cross [-1..1] [-1..1]
-    |> List.filter (fun (x, y) -> x <> 0 || y <> 0)
-    |> List.map (fun (rowOffset, colOffset) ->
+    neighborDirections
+    |> Seq.map (fun (rowOffset, colOffset) ->
       Seq.initInfinite (fun i -> (row + (i+1) * rowOffset, col + (i+1) * colOffset))
       |> Seq.takeWhile (fun (r, c) -> inBounds r c map)
       |> Seq.map (fun (r, c) -> map.[r].[c])
       |> Seq.filter ((<>) '.')
       |> Seq.map (fun v -> if v = seated then 1 else 0)
       |> Seq.tryHead)
-    |> List.map (fun v -> match v with Some x -> x | None -> 0)
-    |> List.sum
+    |> Seq.map (fun v -> match v with Some x -> x | None -> 0)
+    |> Seq.sum
   let stepCell (map:char[][]) (row:int) (col:int): char =
     match map.[row].[col] with
     | '#' -> if neighborCount map row col >= 5 then empty else seated
@@ -70,4 +68,4 @@ let part2 (map:char[][]): int =
     | _ -> map.[row].[col]
   countCells (simulateUntilNoChanges stepCell map) seated
 
-printfn "Part 2: %i" (part2 (Array.copy map))
+printfn "Part 2: %i" (part2 map)
